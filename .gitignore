@@ -2,3 +2,4 @@
 
 dataset/
 dataset_processed/
+pipeline_cache/
