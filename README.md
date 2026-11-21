@@ -14,91 +14,47 @@ Todo el desarrollo de la práctica se realizó en un portátil con las siguiente
 
 ## Detección de emociones
 
-### Entorno de Anaconda utilizado
+### Instalación de los entornos utilizados
 
-Existen tres posibles entornos para crear según las necesidades y preferencias del usuario. El primer entorno y más sencillo se crea con el siguiente comando. No obstante, este solo permite realizar una ejecución con la CPU debido a que la versión utilizada para `TensorFlow` (2.21) no cuenta con soporte nativo para la GPU en Windows (a partir de la versión 2.11), por lo que el tiempo de ejecución aumenta considerablemente. 
+Para realizar esta tarea sin generar conflictos entre las distintas dependencias se crearon dos entornos distintos: uno para los modelos propios de la práctica, que necesita versiones antiguas de varias dependencias para poder entrenar la `CNN` con aceleración por GPU en Windows, y otro para `Mediapipe`, cuyas dependencias son incompatibles con las fijadas en el primero.
 
-```bash
-conda create --name VC_Emotion python=3.11
-conda activate VC_Emotion
+#### Entorno para los modelos (`MTCNN`, `Eigenfaces + SVM` y `CNN`)
 
-pip install tensorflow
-pip install matplotlib mtcnn deepface tf-keras opencv-python==4.12.0.88 scikit-learn ipykernel
-```
-
-Para solucionar este problema existen dos vías: 
-
-#### Instalación para el uso de GPU en Windows
-
-Este método consiste en crear un entorno con versiones anteriores que sí son compatibles con GPU nativo en Windows, haciendo uso además del plugin `DirectML`. además, será necesario crear este nuevo entorno con una versión de Python anterior, ya que la 3.11 no soporta `TensorFlow 2.10`. El proceso de creación del nuevo entorno es el siguiente:
+Este entorno agrupa el procesado del dataset para la detección de caras con `MTCNN` y los entrenamientos para las emociones con `Eigenfaces + SVM` y `CNN`, ya que ninguno de los tres introduce conflictos de dependencias entre sí. Dado que no existe soporte nativo para GPU en Windows a partir de `TensorFlow 2.11`, el entrenamiento de la `CNN` con GPU obliga a usar una versión anterior (`2.10`) junto con el plugin `DirectML`, el cual a su vez solo admite Python hasta la versión `3.10` (no soporta 3.11 en adelante):
 
 ```bash
 conda create --name VC_Emotion_gpu python=3.10
 conda activate VC_Emotion_gpu
 
 pip install "tensorflow-cpu==2.10.0" "tensorflow-directml-plugin" "keras>=2.10.0,<2.11" "protobuf>=3.9.2,<3.20" "numpy<2"
-pip install matplotlib opencv-python==4.9.0.80 scikit-learn ipykernel mtcnn
-pip install deepface "numpy<2"
+pip install matplotlib scikit-learn joblib ipykernel mtcnn
+pip install opencv-python==4.9.0.80 --force-reinstall --no-deps
 ```
 
-Cabe mencionar el motivo del primer lote de dependencias y el de `deepface`, ya que hacerlo de otra manera es propenso a errores y no me permitía instalar correctamente todas. Al intentar instalar las depedencias `keras` y `deepface` sin tener en cuenta sus versiones, se produce un conflicto de versiones incompatibles entre estas dos y `protobuf`. La solución más sencilla es indicar los rangos de versiones en los que estos son compatibles, e instalar `deepface` sin dependencias extra para que no actualice ni corrompa las demás. No obstante, esto supone utilizar `Keras 2` en lugar de `Keras 3`, esto supone tener que instalar una versión de `numpy` anterior a la `2` para que no se rompa la ejecución.
+`tensorflow-directml-plugin` solo es compatible con `tensorflow-cpu==2.10.0`, lo que obliga a fijar `keras` en su rama `2.10` (a partir de `Keras 3` deja de ser compatible con esta versión de `TensorFlow`) y `protobuf` por debajo de la `3.20`. Esto también obliga a mantener `numpy` por debajo de la versión `2`, ya que `TensorFlow 2.10` no es compatible con ella. Por último, instalar `mtcnn` y `scikit-learn` termina actualizando `opencv-python` a una versión más reciente, por lo que es necesario reinstalar la versión deseada (`4.9.0.80`) indicando `--no-deps` para que no vuelva a actualizar `numpy` ni `protobuf` a una versión incompatible con el resto.
+
+Cabe destacar que, al ser `tensorflow-directml-plugin` un proyecto de Microsoft actualmente discontinuado y sin nuevas versiones, no se garantiza su compatibilidad con futuras actualizaciones de los drivers de NVIDIA o de Windows.
 
 Otro inconveniente con este entorno es que cuenta con ciertas funciones que no soporta nativamente en GPU, por lo que las ejecutará en CPU sin avisar y tendrá un rendimiento inferior a realizar la instalación mediante `WSL`. No obstante, no se considera imprescindible el rendimiento y velocidad de ejecución para esta práctica, por lo que se sacrificó a cambio de una implementación más simple.
 
-#### Instalación con `WSL` para soporte de GPU nativo
+#### Entorno para el uso de `Mediapipe` y demo
 
-Este método es mucho más largo, consiste en instalar `WSL` y montar el entorno allí. El primer paso es instalar `WSL2` en caso de no tenerlo, para ello existe el siguiente comando que debe ser ejecutado en `PowerShell` como administrador:
-
-```bash
-wsl --install
-```
-
-En caso de tener la versión `WSL1`, utilizar este comando para actualizarlo:
+Este segundo entorno se usa para la extracción de `keypoints` faciales con `Mediapipe`, tanto en el dataset procesado como en la demo final. Se separa del entorno anterior porque `mediapipe` requiere `protobuf>=4.25.3,<5`, un rango incompatible con el `protobuf<3.20` que exige `tensorflow-directml-plugin`, por lo que no es posible instalar ambos conjuntos de dependencias en un mismo entorno. Al no depender de `TensorFlow` para sus propios modelos, `Mediapipe` no necesita del plugin `DirectML` ni de una versión antigua de Python, por lo que aquí se usan versiones estándar del resto de dependencias:
 
 ```bash
-wsl --set-default-version 2
+conda create --name VC_Emotion_mediapipe python=3.11
+conda activate VC_Emotion_mediapipe
+
+pip install "numpy<2"
+pip install tensorflow tf-keras deepface mediapipe scikit-learn joblib ipykernel
+pip install opencv-python==4.12.0.88 --force-reinstall --no-deps
 ```
 
-Es importante tener actualizado los drivers de NVIDIA, si ya están en Windows no es necesario volver a instalarlos para Linux ya que tiene soporte nativo con `WSL2`. Una vez instalado en su versión correcta, se abre la terminal `WSL` y se instala `Miniconda` a través del siguiente comando:
-
-```bash
-wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-bash Miniconda3-latest-Linux-x86_64.sh
-```
-
-Durante el proceso de instalación aparecerán distintos mensajes de confirmación, es necesario aceptar todos. En caso de rechazar el último, que pregunta si iniciar automáticamente conda al abrir una terminal, se puede iniciar de dos formas:
-
-- Inicio temporal: este comando inicia `Miniconda` en esa sesión exclusivamente.
-
-```bash
-eval "$(/home/user/miniconda3/bin/conda shell.bash hook)"
-```
-
-- Inicio permanente: inicia `Miniconda` en todas las sesiones (es necesario reiniciar la terminal para que tenga efecto):
-
-```bash
-/home/user/miniconda3/bin/conda init bash
-```
-
-En ambos casos es necesario localizar la ruta completa de `conda`.
-
-Una vez instalado e iniciado `Miniconda`, se instala `TensorFlow` con el soporte nativo de GPU junto con el resto de dependencias de la tarea:
-
-```bash
-pip install "tensorflow[and-cuda]"
-pip install matplotlib mtcnn deepface tf-keras opencv-python==4.12.0.88 scikit-learn ipykernel
-```
-
-Finalmente, se registra este entorno en `jupyter` para poder utilizarlo:
-
-```bash
-python -m ipykernel install --user --name=vc_emotion_wsl
-```
-
-Una vez montado el entorno en `WSL`, se procede con el montaje del repositorio dentro de Linux para un rendimiento nativo, en lugar de estar realizando en todo momento una conversión Windows a Linux. Para ello se copia el repositorio (generalmente se encuentra en el directorio `/mnt`) y se abre con VS Code desde la propia terminal `WSL` o con el plugin del mismo nombre en el VS Code de Windows, permitiendo así ejecutar tanto el repositorio como el entorno desde la propia Linux.
-
+Se instala `numpy<2` en primer lugar porque `mediapipe` fija esa misma restricción en sus propias dependencias; instalarlo antes evita que el resto de paquetes la actualicen por error. Igual que en el entorno anterior, `deepface` y `mediapipe` terminan instalando una versión de `opencv-python` distinta a la deseada, por lo que se reinstala la versión concreta (`4.12.0.88`) con `--no-deps` para no alterar las dependencias ya resueltas.
 
 ### Procesamiento del dataset y preparación para los modelos de entrenamiento (`MTCNN`)
+
+El primer cuaderno ejecutado fue `MTCNN_dataset_creation.ipynb`, normaliza todas las imágenes del dataset bruto mediante su detección de caras. El entorno utilizado para este cuaderno fue `VC_Emotion_gpu`.
 
 #### Definición de variables
 
@@ -141,3 +97,25 @@ El dataset final obtenido se puede comprobar a través de la última celda, que 
 **Total de imágenes:** 59099
 **Total de fallos de detección MTCNN:** 10174
 **Porcentaje de fallo:** 17.22%
+
+### Obtención de los `keypoints` con Mediapipe
+
+MediaPipe Face Mesh devuelve 468 puntos por cara. En vez de usarlos todos (demasiada dimensionalidad para los pocos miles de ejemplos por clase que hay), se calculan 9 distancias/ratios geométricos normalizados por la distancia interocular (`IOD`), inspirados en el *eye aspect ratio* (EAR) y *mouth aspect ratio* (MAR) usados en detección de parpadeo/somnolencia:
+
+- `ear_a`, `ear_b`: apertura de cada ojo (EAR).
+- `mar`: apertura de la boca.
+- `mouth_width_norm`: anchura de la boca.
+- `eyebrow_raise_a`, `eyebrow_raise_b`: distancia ceja-ojo (cejas levantadas → sorpresa/miedo).
+- `inter_eyebrow`: distancia entre cejas (más corta → ceño fruncido, enfado).
+- `left_corner_lift`, `right_corner_lift`: altura de las comisuras de la boca respecto a su centro (positivo → sonrisa, negativo → mueca hacia abajo).
+
+Los índices de los puntos (33/133/362/263 para las esquinas de los ojos, 160/158/153/144 y 385/387/373/380 para los párpados, 61/291/13/14 para la boca, 105/55/334/285 para las cejas) corresponden a la topología estándar de MediaPipe Face Mesh.
+
+Se recorren las caras ya recortadas por `MTCNN_dataset_creation.ipynb` en `dataset_processed/<split>/<clase>/`, en el mismo orden (clase alfabética, nombre de fichero alfabético) que usan `SVM_emotion_training.ipynb` y `CNN_emotion_training.ipynb` al cargar los píxeles. Las imágenes en las que MediaPipe no detecta cara se descartan (no se puede calcular geometría sin landmarks), y se guarda la lista de ficheros que sí tuvieron éxito para que los notebooks de entrenamiento carguen exactamente esas mismas imágenes y no se desalineen los índices.
+
+Los resultados finales obtenidos fueron los siguientes:
+
+train: 36502 caras procesadas, 2598 fallos de MediaPipe
+Guardado en dataset_processed\train_keypoints.npz
+test: 9182 caras procesadas, 643 fallos de MediaPipe
+Guardado en dataset_processed\test_keypoints.npz
