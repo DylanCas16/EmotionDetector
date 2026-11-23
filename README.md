@@ -82,9 +82,14 @@ Posteriormente, se procede con las funciones de detección, procesamiento y reco
 
 - **Reescalado e imagen final**. Por último, se realiza el reescalado de la imagen a los píxeles indicados en la segunda celda y se devuelve.
 
-En la siguiente celda se encuentra la función `process_split()`
+En la siguiente celda se encuentra la función `process_split()`, que se encarga de detectar las caras y procesarlas mediante la anterior función para guardarlas en su directorio. El procedimiento que sigue es sencillo, primero lee la imagen y la convierte a `rgb` si existe y la reescala en caso de ser una imagen demasiado grande. Posteriormente, detecta todas las caras mediante la función del modelo `detect_faces()`, si falla la función la marca como fallada y continua, del mismo modo que si no detecta ninguna cara. En caso de haber varias caras en la misma imagen, se obtiene la mejor opción, y si falla este proceso también se marca.
 
-El dataset final obtenido se puede comprobar a través de la última celda, que muestra los siguientes resultados:
+Los resultados que se muestran al finalizar este proceso indican los siguientes procesamientos exitosos:
+
+- **train**: 39100/47279 procesadas correctamente
+- **test**: 9825/11820 procesadas correctamente
+
+La última celda se reserva a realizar un conteo final con los fallos totales de cada clase, formando así el dataset procesado.
 
 | Emoción  | Fallos (train) | Fallos (test) | Total |
 |----------|----------------|----------------|-------|
@@ -94,28 +99,41 @@ El dataset final obtenido se puede comprobar a través de la última celda, que 
 | Sad      | 2373           | 603            | 2976  |
 | Surprise | 911            | 217            | 1128  |
 
-**Total de imágenes:** 59099
-**Total de fallos de detección MTCNN:** 10174
-**Porcentaje de fallo:** 17.22%
+- **Total de imágenes:** 59099
+- **Total de fallos de detección MTCNN:** 10174
+- **Porcentaje de fallo:** 17.22%
 
-### Obtención de los `keypoints` con Mediapipe
+### Obtención de los puntos clave con `Mediapipe`
 
-MediaPipe Face Mesh devuelve 468 puntos por cara. En vez de usarlos todos (demasiada dimensionalidad para los pocos miles de ejemplos por clase que hay), se calculan 9 distancias/ratios geométricos normalizados por la distancia interocular (`IOD`), inspirados en el *eye aspect ratio* (EAR) y *mouth aspect ratio* (MAR) usados en detección de parpadeo/somnolencia:
+El segundo cuaderno a ejecutar es `Mediapipe_dataset_creation.ipynb`. Este añade una última capa al dataset procesado donde se detectan todos los puntos clave (`keypoints`) de la cara, que ayudarán a distinguir mejor las distintas emociones.
 
-- `ear_a`, `ear_b`: apertura de cada ojo (EAR).
-- `mar`: apertura de la boca.
-- `mouth_width_norm`: anchura de la boca.
-- `eyebrow_raise_a`, `eyebrow_raise_b`: distancia ceja-ojo (cejas levantadas → sorpresa/miedo).
-- `inter_eyebrow`: distancia entre cejas (más corta → ceño fruncido, enfado).
-- `left_corner_lift`, `right_corner_lift`: altura de las comisuras de la boca respecto a su centro (positivo → sonrisa, negativo → mueca hacia abajo).
+#### Índices de los puntos
 
-Los índices de los puntos (33/133/362/263 para las esquinas de los ojos, 160/158/153/144 y 385/387/373/380 para los párpados, 61/291/13/14 para la boca, 105/55/334/285 para las cejas) corresponden a la topología estándar de MediaPipe Face Mesh.
+MediaPipe Face Mesh devuelve 468 puntos por cara, pero no se utilizarán todos debido a su demasiada dimensionalidad para los pocos miles de ejemplos por clase que hay. Por eso se calculan 9 distancias/ratios geométricos normalizados por la distancia interocular (`IOD`), inspirados en el *eye aspect ratio* (EAR) y *mouth aspect ratio* (MAR) usados en detección de parpadeo/somnolencia. Los índices finales marcados son los siguientes:
 
-Se recorren las caras ya recortadas por `MTCNN_dataset_creation.ipynb` en `dataset_processed/<split>/<clase>/`, en el mismo orden (clase alfabética, nombre de fichero alfabético) que usan `SVM_emotion_training.ipynb` y `CNN_emotion_training.ipynb` al cargar los píxeles. Las imágenes en las que MediaPipe no detecta cara se descartan (no se puede calcular geometría sin landmarks), y se guarda la lista de ficheros que sí tuvieron éxito para que los notebooks de entrenamiento carguen exactamente esas mismas imágenes y no se desalineen los índices.
+- `ear_a`: esquinas 33/133 y párpados 160/158/153/144.
+- `ear_b`: esquinas 362/263 y párpados 385/387/373/380.
+- `mar`: apertura de la boca (índices 13/14 para la apertura vertical, 61/291 para la anchura).
+- `mouth_width_norm`: anchura de la boca (índices 61/291).
+- `eyebrow_raise_a`, `eyebrow_raise_b`: distancia ceja-ojo (índices 105/158 para `eyebrow_raise_a`, 334/387 para `eyebrow_raise_b`).
+- `inter_eyebrow`: distancia entre cejas (índices 55/285).
+- `left_corner_lift`, `right_corner_lift`: altura de las comisuras de la boca respecto a su centro (comisuras 61 y 291 respectivamente, centro de referencia 13/14).
 
-Los resultados finales obtenidos fueron los siguientes:
+Los índices de los puntos corresponden a la topología estándar de MediaPipe Face Mesh.
+
+#### Procesamiento y guardado de los resultados
+
+Posteriormente, se recorren las caras ya recortadas por el anterior cuaderno (`dataset_processed/<split>/<clase>/`), y las imágenes en las que `MediaPipe` no detecta cara se descartan. Los resultados finales obtenidos fueron los siguientes:
 
 train: 36502 caras procesadas, 2598 fallos de MediaPipe
 Guardado en dataset_processed\train_keypoints.npz
 test: 9182 caras procesadas, 643 fallos de MediaPipe
 Guardado en dataset_processed\test_keypoints.npz
+
+### Modelo `Eigenfaces + SVM + MediaPipe`
+
+El cuaderno que contiene el entrenamiento del modelo es `SVM_emotion_training.ipynb`. Este fue el primer modelo que entrenar para las emociones, se trata de un modelo
+
+### Modelo `CNN + MediaPipe`
+
+### Prueba final comparativa en webcam (`Deepface` vs `CNN` vs `SVM`)
