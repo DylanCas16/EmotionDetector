@@ -160,17 +160,64 @@ Pasando con la otra gráfica, se muestra para cada clase su `precision` (casos v
 
 ### Modelo `CNN + MediaPipe`
 
-El siguiente modelo entrenado fue `CNN`, que consiste en un modelo de redes neuronales convolucionales.
+El siguiente modelo entrenado fue `CNN`, que se trata de un modelo de redes neuronales convolucionales. Su cuaderno de entrenamiento es `CNN_emotion_training.ipynb` y su propósito inicial es realizar una comparativa entre este tipo de modelo basado en redes neuronales y el anterior, un modelo clásico.
 
-Para reducir el sobreajuste y acercar lo máximo posible las curvas de entrenamiento y validación, se genera una copia aumentada de cada imagen de entrenamiento con pequeñas rotaciones, traslaciones y variaciones de brillo usando OpenCV, y se conecta con el set original. Esto lo que hace es ejecutar una única vez numpy/OpenCV, en lugar de como capas dentro del modelo, evitando el aumento de tiempo de ejecución con la CPU de TensorFlow+DirectML que hacía que la aumentación "en vivo" tardara 10-25 min por época. Además, los keypoints geométricos se reutilizan tal cual porque son ratios de distancia prácticamente invariantes a estos pequeños cambios.
+Antes del entrenamiento se pasa por el mismo procedimiento para aplicar los `keypoints` de `MediaPipe`, reescalar a 64x64 píxeles y cambiar a tonalidades grises. No obstante, se añade un paso extra que no aparecía con el anterior modelo ya que en unas primeras pruebas y entrenamientos, los resultados eran pobres y había demasiada distancia en las gráficas entre el entrenamiento y la validación. Por lo que para reducir el sobreajuste y acercar lo máximo posible las curvas de entrenamiento y validación, se genera una copia aumentada de cada imagen de entrenamiento con pequeñas rotaciones, traslaciones y variaciones de brillo usando OpenCV, y se conecta con el set original. Esto lo que hace es ejecutar una única vez numpy/OpenCV, en lugar de como capas dentro del modelo, evitando el aumento de tiempo de ejecución con la CPU de TensorFlow+DirectML que hacía que la aumentación "en vivo" tardara 10-25 min por época. Además, los keypoints geométricos se reutilizan tal cual porque son ratios de distancia prácticamente invariantes a estos pequeños cambios.
+
+El siguiente apartado trata de la definición del modelo, donde se utiliza una red con dos ramas. La primera es una red convolucional que procesa imágenes en escala de grises mediante tres bloques de convolución (32, 64 y 128 filtros de 3×3, activación `ReLU` y padding "same"), cada uno seguido de normalización por lotes y `max pooling` de 2×2, de modo que se reduce progresivamente el espacio mientras se aumenta la profundidad de las características. La salida se aplana y pasa por una capa densa de 128 neuronas con un `dropout` del 50 % para reducir el sobreajuste. En cuanto a la segunda rama, esta procesa un vector de características geométricas mediante una capa densa de 32 neuronas. Ambas ramas de concatenan al final y se procesan con una capa de 64 neuronas. Finalmente aparece una capa de salida con `softmax` que proporciona la probabilidad de pertenencia a cada clase. 
+
+En cuanto al entrenamiento, el modelo utilizó el optimizador `Adam` y una tasa de aprendizaje de 10⁻⁴, además de un `EarlyStopping` de 10 épocas y un reductor de tasa de aprendizaje automático (variable `ReduceLROnPlateau`) para que vaya adaptándose y consiguiendo una mejora en la precisión de las últimas épocas. Una vez terminado el entrenamiento se guarda el modelo y se muestran las siguientes gráficas:
+
+![Resultados del entrenamiento CNN](model_results/cnn/cnn_training_curves.png)
+![Resultados del entrenamiento por clases CNN](model_results/cnn/cnn_per_class_results.png)
+
+En las primeras gráficas se puede apreciar en la `loss` como a pesar de los intentos por reducir el sobreajuste, sigue apareciendo. Aunque en menor medida si se compara con los primeros entrenamientos, por lo que se consideró válido. En cuanto a las otras dos gráficas, estas son una matriz de confusión e histograma con la `precision`, `recall` y `f1-score`, igual que para el anterior modelo. En este caso, se puede apreciar unos resultados un poco peores en ciertos aspectos que el modelo clásico, aunque mantiene la concentración de confusiones entre tristeza, ira y miedo.
 
 ### Prueba final comparativa en webcam (`Deepface` vs `CNN` vs `SVM`)
 
+La comparativa se encuentra al comienzo del cuaderno `Final_tasks.ipynb`. El primer paso es definir las variables de los modelos, indicando la ruta de estos y el tamaño de imagen. Posteriormente se cargan los `keypoints` de `MediaPipe` con toda la lógica del segundo cuaderno comentado, ya que en cada tarea se debe recalcular y se evita de problemas surgidos durante el desarrollo. Estos `keypoints` se mostrarán en esta tarea en la cara que detecte la webcam, detección que ocurre a través de una función compartida en ambos modelos llamada `detect_face()`. En esta función se obtiene el `frame` del video, se procesa y detecta las caras, añadiendo la máscara con los `keypoints`.
+
+A continuación aparecen tres funciones, una para la predicción de la emoción con cada modelo. Además de comparar los dos modelos anteriormente definidos, se añade un último modelo con `Deepface` que servirá de comparativa extra con un modelo ya preentrenado. Durante la prueba de los modelos se puede alternar en cualquier momento qué modelo utilizar a través de un botón, su lógica reside en la celda anterior a la prueba de la webcam.
+
+Durante la prueba se realizaron tres videos, uno para cada modelo, los cuales se mostrarán a continuación en formato gif.
+
+#### Modelo `Deepface`
+
+![Prueba en webcam de `Deepface`](media/videos/deepface_emotions.gif)
+
+En este se puede ver como se detecta relativamente bien cada emoción, con la aparición de la emoción "neutral" pero sin las de miedo o sorpresa.
+
+#### Modelo `Eigenfaces + SVM`
+
+![Prueba en webcam de `SVM`](media/videos/svm_emotions.gif)
+
+Aquí se muestra como el modelo funciona correctamente y detecta con facilidad felicidad, sorpresa y enfado. No obstante, este último se confunde demasiado con tristeza y miedo, llegando a ser muy complicado obtener la emoción de tristeza en el video.
+
+#### Modelo `CNN`
+
+![Prueba en webcam de `CNN`](media/videos/cnn_emotions.gif)
+
+De igual forma, se detecta perfectamente la emoción de felicidad, el miedo y el enfado aparecen con suficiente precisión, y la tristeza se muestra mucho más. No obstante siguen presentándose problemas de confusión entre estas tres y la sorpresa aparece en menor medida.
+
 ## Aplicado de filtros en webcam
 
-### Filtro según `keypoints`
+Los filtros creados para esta práctica se encuentran en el mismo cuaderno que la prueba anterior de comparativas (`Final_tasks.ipynb`), esto se debe a que el comienzo era prácticamente igual al tener que definir las variables, instanciar los modelos y funciones de predicción, así como la obtención de `keypoints`. Se creó un total de 2 filtros, uno en relación a los `landmarks` de la cara mientras que el otro tiene en cuenta los modelos entrenados para las emociones.
+
+### Filtro según `keypoints`/`landmarks`
+
+En este caso se implementó un filtro de realidad aumentada en tiempo real que superpone un sombrero y un bigote de fontanero sobre la cara detectado en la webcam. Los accesorios se almacenan como imágenes PNG con canal alfa y se combinan con el fotograma mediante mezcla alfa, de modo que las zonas transparentes dejan ver la imagen original. 
+
+El tamaño y la posición de cada accesorio se obtiene a partir de los `landmarks` faciales: el ancho del sombrero se obtiene a partir de la distancia entre los puntos laterales de la cara y se ancla a la frente, mientras que el ancho del bigote depende de la distancia entre las comisuras de la boca y se pega debajo de la nariz. Gracias a esto, el filtro se adapta automáticamente a la escala y posición del rostro.
+
+A continuación, se mostrará un video en formato gif con la ejecución del filtro:
 
 ### Filtro según emociones
+
+Para este filtro se utilizó el modelo `CNN` para la obtención de las emociones, el filtro consiste en la superposición de distintas imágenes en la cara del usuario según la emoción que se detecte. Cabe mencionar que todas las imágenes son de tono humorístico y han sido sacadas de "Pinterest", cuyo enlace se muestra en la bibliografía. 
+
+Para cada emoción hay un subdirectorio con varias imágenes que aparecerán aleatoriamente, ubicado en el directorio `media/emotions`. Además, debido a que el dataset utilizado contiene una errata en la clase de sorpresa (con *suprise* en lugar de *surprise*), se realiza una pequeña corrección en forma de diccionario para asociar más facilmente las emociones con las imágenes.
+
+A continuación, se mostrará un breve video en formato gif con el filtro en funcionamiento:
 
 ## Bibliografía
 
