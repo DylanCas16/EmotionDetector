@@ -136,4 +136,12 @@ El cuaderno que contiene el entrenamiento del modelo es `SVM_emotion_training.ip
 
 ### Modelo `CNN + MediaPipe`
 
+Para reducir el sobreajuste y acercar lo máximo posible las curvas de entrenamiento y validación, se genera una copia aumentada de cada imagen de entrenamiento con pequeñas rotaciones, traslaciones y variaciones de brillo usando OpenCV, y se conecta con el set original. Esto lo que hace es ejecutar una única vez numpy/OpenCV, en lugar de como capas dentro del modelo, evitando el aumento de tiempo de ejecución con la CPU de TensorFlow+DirectML que hacía que la aumentación "en vivo" tardara 10-25 min por época. Además, los keypoints geométricos se reutilizan tal cual porque son ratios de distancia prácticamente invariantes a estos pequeños cambios.
+
 ### Prueba final comparativa en webcam (`Deepface` vs `CNN` vs `SVM`)
+
+## Bibliografía
+
+Fuente de sombrero Mario: [www.pngaaa.com](https://www.pngaaa.com/detail/2119095)
+Fuente de bigote Mario: [www.pngaaa.com](https://www.pngaaa.com/detail/2659502)
+Imágenes de emociones: [pinterest](https://es.pinterest.com/)
