@@ -132,13 +132,45 @@ Guardado en dataset_processed\test_keypoints.npz
 
 ### Modelo `Eigenfaces + SVM + MediaPipe`
 
-El cuaderno que contiene el entrenamiento del modelo es `SVM_emotion_training.ipynb`. Este fue el primer modelo que entrenar para las emociones, se trata de un modelo
+El cuaderno que contiene el entrenamiento del primer modelo es `SVM_emotion_training.ipynb`. Está formado por los siguientes componentes:
+
+- **Eigenfaces**. Se trata de una técnica que extrae características basada en PCA (Análisis de Componentes Principales), reduciendo la dimensionalidad de las imágenes faciales.
+- **SVM**. Es un algoritmo de aprendizaje que clasifica distintas clases buscando un hiperplano óptimo para separar estas con la máxima distancia posible.
+- **MediaPipe**. El modelo utiliza los `keypoints` para apoyarse a la hora de buscar características distintivas entre las clases.
+
+Pasando con el cuaderno, lo primero que se hace es cargar el dataset procesado, añadiéndole los `keypoints` a las imágenes, redimensionándolo a 64x64 píxeles y convirtiéndolo a escala de grises, para posteriormente proceder con el entrenamiento. 
+
+Para la clasificación se construyó un `pipeline` de `scikit-learn` compuesto por tres etapas: estandarización de las variables (atributo `StandardScaler`), reducción de dimensionalidad (atributo `PCA`) y un clasificador (atributo `SVM`) con núcleo de base radial fijo (RBF). El uso del pipeline garantiza que el escalado y el PCA se ajusten únicamente con los datos de entrenamiento de cada partición de la validación cruzada, evitando la fuga de información. Para compensar el posible desbalanceo entre clases se empleó ponderación automática a través de la variable `class_weight="balanced"`.
+
+Los hiperparámetros se seleccionaron mediante búsqueda en rejilla con validación cruzada en 3 particiones, explorando el número de componentes principales con la variable `pca__n_components` (150, 200 y 300) y el parámetro de regularización `svm__C` (1, 10, 100 y 300), lo que supone 12 configuraciones y 36 ajustes. El mejor modelo se reentrenó con todo el conjunto de entrenamiento y se evaluó posteriormente sobre un conjunto de test independiente para la posterior generación de distintas tablas.
+
+Una vez se finaliza el entrenamiento, la siguiente celda sirve para guardar el modelo y generar una gráfica con los resultados:
+
+![Resultados del entrenamiento SVM](model_results/svm/svm_training_results.png)
+
+Esta gráfica muestra el `accuracy` medio de validación cruzada, en las tres particiones de la variable `pcs__n_components` y los cuatro parametros de `svm_C`, formando un total de 12 combinaciones. Se puede concluir que la combinación con los mejores resultados se obtuvo con 300 componentes de `PCA` y 100/300 de `C`. 
+
+Por último, siguiente celda ejecuta una prueba con el directorio `test/` y muestra otras dos gráficas:
+
+![Resultados del entrenamiento por clases SVM](model_results/svm/svm_per_class_results.png)
+
+La primera es un mapa de confusión entre las etiquetas reales y las que el modelo ha predich, mostrando unos resultados muy positivos al no errar más de 100 veces en ningún caso. La clase que más tendencia tiene a confundir es la tristeza con la ira y el miedo. 
+
+Pasando con la otra gráfica, se muestra para cada clase su `precision` (casos verdaderos positivos acertados), `recall` (casos verdaderos positivos sobre el total) y `f1-score` (media armónica entre las dos anteriores variables).
 
 ### Modelo `CNN + MediaPipe`
+
+El siguiente modelo entrenado fue `CNN`, que consiste en un modelo de redes neuronales convolucionales.
 
 Para reducir el sobreajuste y acercar lo máximo posible las curvas de entrenamiento y validación, se genera una copia aumentada de cada imagen de entrenamiento con pequeñas rotaciones, traslaciones y variaciones de brillo usando OpenCV, y se conecta con el set original. Esto lo que hace es ejecutar una única vez numpy/OpenCV, en lugar de como capas dentro del modelo, evitando el aumento de tiempo de ejecución con la CPU de TensorFlow+DirectML que hacía que la aumentación "en vivo" tardara 10-25 min por época. Además, los keypoints geométricos se reutilizan tal cual porque son ratios de distancia prácticamente invariantes a estos pequeños cambios.
 
 ### Prueba final comparativa en webcam (`Deepface` vs `CNN` vs `SVM`)
+
+## Aplicado de filtros en webcam
+
+### Filtro según `keypoints`
+
+### Filtro según emociones
 
 ## Bibliografía
 
