@@ -211,13 +211,19 @@ El tamaño y la posición de cada accesorio se obtiene a partir de los `landmark
 
 A continuación, se mostrará un video en formato gif con la ejecución del filtro:
 
+![Prueba del primer filtro](media/videos/filter_landmarks.gif)
+
 ### Filtro según emociones
 
 Para este filtro se utilizó el modelo `CNN` para la obtención de las emociones, el filtro consiste en la superposición de distintas imágenes en la cara del usuario según la emoción que se detecte. Cabe mencionar que todas las imágenes son de tono humorístico y han sido sacadas de "Pinterest", cuyo enlace se muestra en la bibliografía. 
 
 Para cada emoción hay un subdirectorio con varias imágenes que aparecerán aleatoriamente, ubicado en el directorio `media/emotions`. Además, debido a que el dataset utilizado contiene una errata en la clase de sorpresa (con *suprise* en lugar de *surprise*), se realiza una pequeña corrección en forma de diccionario para asociar más facilmente las emociones con las imágenes.
 
+Por otro lado, para evitar un cambio constante y repentino en las imágenes y las emociones, se obtiene la emoción a través de una media de probabilidades. Este sistema va calculando en una ventana de 5 `frames` las probabilidades de las emociones que detecta para posteriormente obtener su media de probabilidades. Se eligió este tipo de media en lugar de una simple ya que de otra forma podría seguir produciéndose cambios repentinos indeseados por un único `frame`.
+
 A continuación, se mostrará un breve video en formato gif con el filtro en funcionamiento:
+
+![Prueba del segundo filtro](media/videos/filter_emotions.gif)
 
 ## Bibliografía
 
