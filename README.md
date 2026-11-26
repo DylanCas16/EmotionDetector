@@ -177,9 +177,15 @@ En las primeras gráficas se puede apreciar en la `loss` como a pesar de los int
 
 La comparativa se encuentra al comienzo del cuaderno `Final_tasks.ipynb`. El primer paso es definir las variables de los modelos, indicando la ruta de estos y el tamaño de imagen. Posteriormente se cargan los `keypoints` de `MediaPipe` con toda la lógica del segundo cuaderno comentado, ya que en cada tarea se debe recalcular y se evita de problemas surgidos durante el desarrollo. Estos `keypoints` se mostrarán en esta tarea en la cara que detecte la webcam, detección que ocurre a través de una función compartida en ambos modelos llamada `detect_face()`. En esta función se obtiene el `frame` del video, se procesa y detecta las caras, añadiendo la máscara con los `keypoints`.
 
-A continuación aparecen tres funciones, una para la predicción de la emoción con cada modelo. Además de comparar los dos modelos anteriormente definidos, se añade un último modelo con `Deepface` que servirá de comparativa extra con un modelo ya preentrenado. Durante la prueba de los modelos se puede alternar en cualquier momento qué modelo utilizar a través de un botón, su lógica reside en la celda anterior a la prueba de la webcam.
+A continuación aparecen tres funciones, una para la predicción de la emoción con cada modelo. Además de comparar los dos modelos anteriormente definidos, se añade un último modelo con `Deepface` que servirá de comparativa extra con un modelo ya preentrenado. 
 
-Durante la prueba se realizaron tres videos, uno para cada modelo, los cuales se mostrarán a continuación en formato gif.
+Existe una celda anterior a una comparativa en webcam que realiza una prueba a partir de las imagenes del directorio `test/`, análoga a las pruebas que han realizado los otros dos modelos. Esta genera dos gráficas que sirven para comparar con las de los otros modelos y son las siguientes:
+
+![Gráficas de rendimiento Deepface](model_results/deepface/deepface_per_class_results.png)
+
+En esta gráfica se puede ver un rendimiento inferior al de los otros dos, donde se alcanza hasta los 300 errores. Las clases que más fallan son las mismas que la de los otros modelos, tristeza con ira y miedo, e incluso se dan más errores en la clase de felicidad.
+
+Durante la prueba de los modelos se puede alternar en cualquier momento qué modelo utilizar a través de un botón y se grabaron tres videos, uno para cada modelo, los cuales se mostrarán a continuación en formato gif.
 
 #### Modelo `Deepface`
 
